@@ -15,7 +15,7 @@ Supports tailing all streams for cloudwatch log group with following capabilitie
 
 ### Highlighting based on log level
 
-`-w` option enables highlighting based on log level. Default regex to detect log level is `(?i)\\b((?P<warning>warn|warning)|(?P<error>error))\\b`. Custom regex can be provided with `-l` option. 
+`-w` option enables highlighting based on log level. Default regex to detect log level is `(?i)\b((?P<warning>warn|warning)|(?P<error>error))\b`. Custom regex can be provided with `-l` option. 
 
 Custom regex must contain named capture groups with names `warning` and `error`. If any of these groups are not empty for any given line of code then that line will be highlighted with yellow for warning or red for errors. If both groups match, then line will be highlighted as error.
 
