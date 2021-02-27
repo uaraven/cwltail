@@ -3,16 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/alexflint/go-arg"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/uaraven/cwltail/cwlogs"
@@ -57,23 +56,21 @@ func collectAndDisplay(wg *sync.WaitGroup, context *logCollectionContext) {
 }
 
 func createCWLClient() *cloudwatchlogs.Client {
-
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-
+	var cfg aws.Config
+	var err error
 	if options.AwsProfile != "" {
-		// Create the credentials from AssumeRoleProvider to assume the role
-		// referenced by the "myRoleARN" ARN using the MFA token code provided.
-		creds := stscreds.NewAssumeRoleProvider(sts.NewFromConfig(cfg), options.AwsProfile, func(o *stscreds.AssumeRoleOptions) {
-			o.TokenProvider = stscreds.StdinTokenProvider
-		})
+		cfg, err = config.LoadDefaultConfig(context.TODO(),
+			config.WithSharedConfigProfile(options.AwsProfile),
+			config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
+				o.TokenProvider = stscreds.StdinTokenProvider
+			}))
+	} else {
+		cfg, err = config.LoadDefaultConfig(context.TODO())
 
-		cfg.Credentials = creds // &aws.CredentialsCache{Provider: creds}
-
-		// cfg, err = config.LoadDefaultConfig(context.TODO(), stscreds.)
 	}
 
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to load AWS config: %w", err)
 	}
 
 	client := cloudwatchlogs.NewFromConfig(cfg)
@@ -122,12 +119,12 @@ func main() {
 
 	arg.MustParse(&options)
 
-	log.SetLevel(log.TraceLevel)
-	logfile, err := os.Create("log.log")
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.SetOutput(logfile)
+	log.SetLevel(log.InfoLevel)
+	// logfile, err := os.Create("log.log")
+	// if err != nil {
+	// 	log.Fatalf("Failed to create log file: %w", err)
+	// }
+	// log.SetOutput(logfile)
 
 	client := createCWLClient()
 
