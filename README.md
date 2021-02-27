@@ -15,9 +15,13 @@ Supports tailing all streams for cloudwatch log group with following capabilitie
 
 ### Highlighting based on log level
 
-`-w` option enables highlighting based on log level. Default regex to detect log level is `(?i)\b((?P<warning>warn|warning)|(?P<error>error))\b`. Custom regex can be provided with `-l` option. 
+`-w` option enables highlighting based on log level. Default regex to detect log level is 
 
-Custom regex must contain named capture groups with names `warning` and `error`. If any of these groups are not empty for any given line of code then that line will be highlighted with yellow for warning or red for errors. If both groups match, then line will be highlighted as error.
+    (?i)\b((?P<warning>warn|warning)|(?P<error>error))\b
+
+Custom regex can be provided with `-l` option. 
+
+Custom regex must contain named capture groups with names `warning` and `error`. If any of these groups are not empty for any given line of code, then that line will be highlighted with yellow for warning or red for errors. If both groups match, then line will be highlighted as an error.
 
 ### Highlighting parts of the log message
 
@@ -36,4 +40,8 @@ If the expression is prefixed with exclamation mark that it will work as `grep -
 `-f Exception` will match all the lines containing the sequence "Exception"
 
 `-f !Exception` will match all the lines that do not contain the sequence "Exception"
+
+### Download
+
+Download the latest binaries on [releases](https://github.com/uaraven/cwltail/releases) page. That contains precompiled binaries for Linux and MacOS x86. Sorry, no Windows binaries, use Linux binary with WSL2. 
 
