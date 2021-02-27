@@ -1,3 +1,4 @@
 *.log
 cwltail
 .vscode/launch.json
+cwltail-*
