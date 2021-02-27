@@ -19,8 +19,6 @@ Supports tailing all streams for cloudwatch log group with following capabilitie
 
 Custom regex must contain named capture groups with names `warning` and `error`. If any of these groups are not empty for any given line of code then that line will be highlighted with yellow for warning or red for errors. If both groups match, then line will be highlighted as error.
 
-Your terminal must support 24-bit colors for log level highlighting to work. 
-
 ### Highlighting parts of the log message
 
 `-c` option allows to pass a regular expression to highlight certain parts of the log messages. If expression matches the log line, then each capturing group of the expression will be displayed in a distinct color.

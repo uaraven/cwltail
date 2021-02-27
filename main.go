@@ -41,7 +41,7 @@ func createLogLine(context *logCollectionContext, event cwlogs.CWLEvent) *string
 			if context.InvertFilter {
 				return nil
 			}
-			logLine = ui.HighlightSelection(event.Message(), match, ":#86b9bf")
+			logLine = ui.HighlightSelection(event.Message(), match, ":cyan")
 		}
 	} else {
 		logLine = event.Message()
@@ -144,7 +144,7 @@ func main() {
 	if options.DebugLogs {
 		logfile, err := os.Create("debug.log")
 		if err != nil {
-			log.Fatalf("Failed to create log file: %w", err)
+			log.Fatalf("Failed to create log file: %v", err)
 		}
 		log.SetOutput(logfile)
 	} else {

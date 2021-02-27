@@ -16,16 +16,17 @@ var (
 		"red",
 	}
 
-	errorBack = ColorFunc(":#FFD0D0")
+	// errorBack = ColorFunc(":#FFD0D0")
+	errorBack = ColorWrapFunc(":red")
 
-	warnBack = ColorFunc(":#FFFFD0")
+	warnBack = ColorWrapFunc(":yellow")
 
 	reset = ColorCode("reset")
 
 	//StreamNameColorizer is a colorizer function for log stream name
-	StreamNameColorizer = ColorWrapFunc("+bu")
+	StreamNameColorizer = ColorWrapFunc("+b")
 	//TimestampColorizer is a colorizer function for log event timestamp
-	TimestampColorizer = ColorWrapFunc("+b")
+	TimestampColorizer = ColorWrapFunc("+i")
 
 	colorFuncs = createColorFuncs()
 )

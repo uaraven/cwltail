@@ -27,7 +27,7 @@ func ConfigAWS(profile string) *aws.Config {
 	}
 
 	if err != nil {
-		log.Fatalf("Failed to load AWS config: %w", err)
+		log.Fatalf("Failed to load AWS config: %v", err)
 	}
 	return &cfg
 }
