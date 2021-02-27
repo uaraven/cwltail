@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -68,20 +69,18 @@ func hasFg(style string) bool {
 }
 
 func hasBg(style string) bool {
-	return len(style) > 0 && strings.Index(style, ":") == 0
+	return len(style) > 0 && strings.Index(style, ":") >= 0
 }
 
-// ColorWrapFunc returns a function that sets the color for the passed string and then resets it to default
-func ColorWrapFunc(color string) ColorizerFunc {
-	if color == "" {
-		return func(s string) string {
-			return s
-		}
+func ansiCodesForWrapping(styleCode string) (string, string) {
+	style := strings.Trim(styleCode, " ")
+	if style == "" {
+		return "", ""
 	}
-	code := ColorCode(color)
+	code := ColorCode(style)
 	var resetCode string
-	fg := hasFg(code)
-	bg := hasBg(code)
+	fg := hasFg(style)
+	bg := hasBg(style)
 	if fg && bg {
 		resetCode = Reset
 	} else if fg {
@@ -89,6 +88,26 @@ func ColorWrapFunc(color string) ColorizerFunc {
 	} else {
 		resetCode = ResetBg
 	}
+	return code, resetCode
+}
+
+// ColorWrap sets the style for the passed string and then resets it to default
+func ColorWrap(text string, style string) string {
+	if style == "" {
+		return text
+	}
+	code, resetCode := ansiCodesForWrapping(style)
+	return code + text + resetCode
+}
+
+// ColorWrapFunc returns a function that sets the style for the passed string and then resets it to default
+func ColorWrapFunc(style string) ColorizerFunc {
+	if style == "" {
+		return func(s string) string {
+			return s
+		}
+	}
+	code, resetCode := ansiCodesForWrapping(style)
 	return func(s string) string {
 		return code + s + resetCode
 	}
@@ -97,6 +116,16 @@ func ColorWrapFunc(color string) ColorizerFunc {
 func parseAttrs(attrs string, front bool) string {
 	if attrs == "" {
 		return ""
+	}
+	var buf = bytes.NewBufferString("")
+	if attrs[0] == '#' {
+		if front {
+			buf.WriteString("38;")
+		} else {
+			buf.WriteString("48;")
+		}
+		buf.WriteString(colorRGB(int(hexToRGB(attrs))))
+		return buf.String()
 	}
 	attrGroup := strings.Split(attrs, "+")
 	var color string
@@ -115,7 +144,6 @@ func parseAttrs(attrs string, front bool) string {
 	} else {
 		colorBase = colorCode[front]
 	}
-	var buf = bytes.NewBufferString("")
 	buf.WriteString(colorBase)
 	buf.WriteString(color)
 	buf.WriteString(";")
@@ -144,6 +172,9 @@ func parseAttrs(attrs string, front bool) string {
 
 // ColorCode returns the ANSI color color code for style.
 func ColorCode(styleCode string) string {
+	if len(styleCode) == 0 {
+		return Reset
+	}
 	style := strings.ToLower(styleCode)
 	if style == "reset" {
 		return Reset
@@ -169,6 +200,19 @@ func RGB(r, g, b uint) uint {
 	return (r&0xFF)<<16 | (g&0xFF)<<8 | (b & 0xFF)
 }
 
+// hexToRGB converts color string in #RRGGBB format into an integer
+// if string doesn't represent a valid hex number this function will panic
+func hexToRGB(hexColor string) uint {
+	if len(hexColor) != 7 {
+		panic(fmt.Errorf("Invalid color string: %v", hexColor))
+	}
+	color, err := strconv.ParseUint(hexColor[1:], 16, 32)
+	if err != nil {
+		panic(err)
+	}
+	return uint(color)
+}
+
 func rgbColor(color uint) string {
 	var buf = bytes.NewBufferString("2;")
 	r := (color >> 16) & 0xFF
@@ -183,17 +227,23 @@ func rgbColor(color uint) string {
 	return buf.String()
 }
 
-// ColorRGB returns the ANSI color color for an RGB color
+func colorRGB(col int) string {
+	var buf = bytes.NewBufferString("")
+	buf.WriteString(rgbColor(uint(col)))
+	return buf.String()
+}
+
+// ColorRGB returns the ANSI color code for an RGB color
 // pass -1 if you don't want to change either foreground or background
 func ColorRGB(fg int, bg int) string {
 	var buf = bytes.NewBufferString(escape)
 	if fg >= 0 {
 		buf.WriteString("38;")
-		buf.WriteString(rgbColor(uint(fg)))
+		buf.WriteString(colorRGB(fg))
 	}
 	if bg >= 0 {
 		buf.WriteString("48;")
-		buf.WriteString(rgbColor(uint(bg)))
+		buf.WriteString(colorRGB(bg))
 	}
 	buf.Truncate(buf.Len() - 1)
 	buf.WriteRune('m')

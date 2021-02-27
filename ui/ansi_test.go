@@ -42,6 +42,22 @@ func TestFgAndBgColor(t *testing.T) {
 func TestRgbColor(t *testing.T) {
 	col := ColorRGB(0xFF1001, 0x0110FF)
 	if col != "\033[38;2;255;16;1;48;2;1;16;255m" {
-		t.Errorf("Expected: \\033[38;2;255;16;1;48;2;1;16;255m\n  Actual: %v", col)
+		t.Errorf("\nExpected: \033[38;2;255;16;1;48;2;1;16;255m\n  Actual: %v", col)
+	}
+}
+
+func TestRgbCode(t *testing.T) {
+	col := ColorCode("#FF1001:#0110FF")
+	if col != "\033[38;2;255;16;1;48;2;1;16;255m" {
+		t.Errorf("\nExpected: \033[38;2;255;16;1;48;2;1;16;255m\n  Actual: %v", col)
+	}
+}
+
+func TestWrapColorizer(t *testing.T) {
+	colorizer := ColorWrapFunc("black:yellow")
+	actual := colorizer("test")
+	expected := "\033[30;43mtest\033[39;49m"
+	if actual != expected {
+		t.Errorf("\nExpected: %v\n  Actual: %v", actual, expected)
 	}
 }

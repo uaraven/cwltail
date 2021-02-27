@@ -1,19 +1,17 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/alexflint/go-arg"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/uaraven/cwltail/awsi"
 	"github.com/uaraven/cwltail/cwlogs"
 	"github.com/uaraven/cwltail/ui"
 )
@@ -22,59 +20,64 @@ type logCollectionContext struct {
 	LogGroup           string
 	HighlightPattern   *regexp.Regexp
 	LevelDetectPattern *regexp.Regexp
+	FilterPattern      *regexp.Regexp
+	InvertFilter       bool
 	Events             chan cwlogs.CWLEvent
 	StartTime          time.Time
 	EndTime            *time.Time
 }
 
-func createLogLine(context *logCollectionContext, event cwlogs.CWLEvent) string {
-	var level string
-	if context.LevelDetectPattern != nil {
-		level = context.LevelDetectPattern.FindString(event.Message())
-	}
+func createLogLine(context *logCollectionContext, event cwlogs.CWLEvent) *string {
 	streamID := event.ShortStreamName()
 	var logLine string
-	if context.HighlightPattern == nil {
-		logLine = event.Message()
+	if context.FilterPattern != nil {
+		match := context.FilterPattern.FindStringIndex(event.Message())
+		if match == nil {
+			if !context.InvertFilter {
+				return nil
+			}
+			logLine = event.Message()
+		} else {
+			if context.InvertFilter {
+				return nil
+			}
+			logLine = ui.HighlightSelection(event.Message(), match, ":#FFFBB8")
+		}
 	} else {
-		logLine = ui.Colorize(context.HighlightPattern, event.Message())
+		logLine = event.Message()
 	}
-	if level != "" {
-		logLine = ui.HighlightLogLevel(level, logLine)
+	if context.HighlightPattern != nil {
+		logLine = ui.Colorize(context.HighlightPattern, logLine)
+	}
+	if options.LevelHighlight {
+		if context.LevelDetectPattern != nil {
+			level := context.LevelDetectPattern.FindString(event.Message())
+			logLine = ui.HighlightLogLevel(level, logLine)
+		}
+	}
+	if options.ShowEventTime || options.ShowEventTimestamp {
+		var format string
+		if options.ShowEventTime {
+			format = "15:04:05.000"
+		} else {
+			format = time.RFC3339
+		}
+		logLine = fmt.Sprintf("[%s] %s", ui.TimestampColorizer(event.Timestamp().Format(format)), logLine)
 	}
 	if options.ShowStreamNames {
-		logLine = fmt.Sprintf("%s %s", ui.StreamName("["+streamID+"]"), logLine)
+		logLine = fmt.Sprintf("[%s] %s", ui.StreamNameColorizer(streamID), logLine)
 	}
-	return logLine
+	return &logLine
 }
 
 func collectAndDisplay(wg *sync.WaitGroup, context *logCollectionContext) {
 	for event := range context.Events {
-		fmt.Println(createLogLine(context, event))
+		logLine := createLogLine(context, event)
+		if logLine != nil {
+			fmt.Println(*logLine)
+		}
 	}
 	wg.Done()
-}
-
-func createCWLClient() *cloudwatchlogs.Client {
-	var cfg aws.Config
-	var err error
-	if options.AwsProfile != "" {
-		cfg, err = config.LoadDefaultConfig(context.TODO(),
-			config.WithSharedConfigProfile(options.AwsProfile),
-			config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
-				o.TokenProvider = stscreds.StdinTokenProvider
-			}))
-	} else {
-		cfg, err = config.LoadDefaultConfig(context.TODO())
-
-	}
-
-	if err != nil {
-		log.Fatalf("Failed to load AWS config: %w", err)
-	}
-
-	client := cloudwatchlogs.NewFromConfig(cfg)
-	return client
 }
 
 func logTailStream(client *cloudwatchlogs.Client, logGroups []string) {
@@ -85,7 +88,7 @@ func logTailStream(client *cloudwatchlogs.Client, logGroups []string) {
 
 	logCollectorContext := logCollectionContext{
 		LogGroup:         logGroups[0],
-		HighlightPattern: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}.\d{3})\s+\[(.*)\]\s+(\S+)\s+([a-zA-Z0-9_.]+).*`),
+		HighlightPattern: regexp.MustCompile(options.ColorPattern),
 		StartTime:        start,
 		EndTime:          nil,
 		Events:           logstream,
@@ -93,6 +96,15 @@ func logTailStream(client *cloudwatchlogs.Client, logGroups []string) {
 
 	if options.LevelPattern != "" {
 		logCollectorContext.LevelDetectPattern = regexp.MustCompile(options.LevelPattern)
+	}
+	if options.FilterPattern != "" {
+		if options.FilterPattern[0] == '!' {
+			logCollectorContext.FilterPattern = regexp.MustCompile(options.FilterPattern[1:])
+			logCollectorContext.InvertFilter = true
+		} else {
+			logCollectorContext.FilterPattern = regexp.MustCompile(options.FilterPattern)
+		}
+
 	}
 
 	var wg sync.WaitGroup
@@ -108,25 +120,36 @@ type positional struct {
 }
 
 var options struct {
-	ColorPattern    string   `arg:"-c,--color-pattern" help:"Regex to colorize log lines"`
-	ShowStreamNames bool     `arg:"-s,--show-stream-names" help:"Show shortened stream names"`
-	AwsProfile      string   `arg:"-p,--profile" help:"AWS Profile name"`
-	LevelPattern    string   `arg:"-l,--level-pattern" help:"Regex to extract log level from the log event"`
-	LogGroups       []string `arg:"positional,required"`
+	ColorPattern       string   `arg:"-c,--color-pattern" help:"Regex to colorize log lines"`
+	ShowStreamNames    bool     `arg:"-s,--show-stream-names" help:"Show shortened stream names"`
+	AwsProfile         string   `arg:"-p,--profile" help:"AWS Profile name"`
+	LevelHighlight     bool     `arg:"-w,--level-highlight" help:"Enable highlighting for log events of WARN and ERROR levels"`
+	LevelPattern       string   `arg:"-l,--level-pattern" help:"Regex to extract log level from the log event" default:"(?i)\\s+(warn|warning|error|info)\\s+"`
+	DebugLogs          bool     `arg:"--debug-logs" help:"Enable debug logging to debug.log file"`
+	FilterPattern      string   `arg:"-f,--filter" help:"Display only lines that match provided regular expression"`
+	ShowEventTime      bool     `arg:"-t,--show-event-time" help:"Displays Cloudwatch event time in ISO8601 format. This displays only the time portion of timestamp"`
+	ShowEventTimestamp bool     `arg:"-i,--show-event-timestamp" help:"Displays Cloudwatch event timestamp in ISO8601 format"`
+	LogGroups          []string `arg:"positional,required"`
 }
 
 func main() {
-
 	arg.MustParse(&options)
+	if options.ShowEventTime && options.ShowEventTimestamp {
+		fmt.Println("Only one of --show-event-time, --show-event-timestamp options allowed")
+		os.Exit(-1)
+	}
 
-	log.SetLevel(log.InfoLevel)
-	// logfile, err := os.Create("log.log")
-	// if err != nil {
-	// 	log.Fatalf("Failed to create log file: %w", err)
-	// }
-	// log.SetOutput(logfile)
+	if options.DebugLogs {
+		logfile, err := os.Create("debug.log")
+		if err != nil {
+			log.Fatalf("Failed to create log file: %w", err)
+		}
+		log.SetOutput(logfile)
+	} else {
+		log.SetLevel(log.WarnLevel)
+	}
 
-	client := createCWLClient()
+	client := awsi.CreateCloudwatchLogsClient(awsi.ConfigAWS(options.AwsProfile))
 
 	logTailStream(client, options.LogGroups)
 }

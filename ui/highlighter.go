@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"regexp"
 	"strings"
 )
@@ -18,14 +19,12 @@ var (
 
 	warnBack = ColorFunc(":yellow")
 
-	infoBack = ColorFunc(":blue")
+	reset = ColorCode("reset")
 
-	streamNameColor = ColorCode("black:white")
-	reset           = ColorCode("reset")
-
-	StreamName = func(s string) string {
-		return streamNameColor + s + reset
-	}
+	//StreamNameColorizer is a colorizer function for log stream name
+	StreamNameColorizer = ColorWrapFunc("+bu")
+	//TimestampColorizer is a colorizer function for log event timestamp
+	TimestampColorizer = ColorWrapFunc("+b")
 
 	colorFuncs = createColorFuncs()
 )
@@ -42,7 +41,7 @@ func createColorFuncs() []ColorizerFunc {
 // Warning background is applied if logLevel is equal to "WARN" or "WARNING" and
 // Error backgroud is applied for "ERROR" logLevel
 func HighlightLogLevel(logLevel string, text string) string {
-	switch strings.ToLower(logLevel) {
+	switch strings.Trim(strings.ToLower(logLevel), " ") {
 	case "warn":
 	case "warning":
 		return warnBack(text)
@@ -77,4 +76,15 @@ func Colorize(pattern *regexp.Regexp, text string) string {
 	sb.WriteString(lastGroup)
 
 	return sb.String()
+}
+
+// HighlightSelection highlights slice of the string with indexes provided in selection with a style
+func HighlightSelection(text string, selection []int, style string) string {
+	buf := bytes.NewBufferString("")
+	buf.WriteString(text[:selection[0]])
+	wrap := ColorWrap(text[selection[0]:selection[1]], style)
+	buf.WriteString(wrap)
+	buf.WriteString(text[selection[1]:])
+	s := buf.String()
+	return s
 }
