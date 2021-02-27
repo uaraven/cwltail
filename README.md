@@ -1,3 +1,3 @@
 # cwltail
 
-tail -f for cloudwatch logs and with custom highlighting
+tail -f for cloudwatch logs and with custom highlighting.
