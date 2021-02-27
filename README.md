@@ -1,3 +1,3 @@
-# contrails
+# cwltail
 
-Because contrails are `tail -f` in the sky.
+tail -f for cloudwatch logs and with custom highlighting
