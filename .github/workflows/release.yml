@@ -23,12 +23,19 @@ jobs:
         with:
           go-version: 1.16
 
+        # see: https://github.com/actions/checkout/issues/290
+      - name: Fetch tags
+        run: git fetch --tags --force
+
       # Runs a set of commands using the runners shell
       - name: Run tests
         run: go test ./...
 
       - name: Create binaries
         run: sh build/build.sh
+
+      - uses: ericcornelissen/git-tag-annotation-action@v1
+        id: tag_data
 
       - name: Create Release
         if: success()
@@ -40,7 +47,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           body: |
-            Release ${{github.ref}}
+            ${{ steps.tag_data.outputs.git-tag-annotation }}
           draft: true
           prerelease: false
       - name: Upload Linux Binary
