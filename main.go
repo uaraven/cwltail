@@ -41,7 +41,7 @@ func createLogLine(context *logCollectionContext, event cwlogs.CWLEvent) *string
 			if context.InvertFilter {
 				return nil
 			}
-			logLine = ui.HighlightSelection(event.Message(), match, ":#FFFBB8")
+			logLine = ui.HighlightSelection(event.Message(), match, ":#86b9bf")
 		}
 	} else {
 		logLine = event.Message()
@@ -51,8 +51,10 @@ func createLogLine(context *logCollectionContext, event cwlogs.CWLEvent) *string
 	}
 	if options.LevelHighlight {
 		if context.LevelDetectPattern != nil {
-			level := context.LevelDetectPattern.FindString(event.Message())
-			logLine = ui.HighlightLogLevel(level, logLine)
+			matches := context.LevelDetectPattern.FindStringSubmatch(event.Message())
+			if len(matches) > 0 {
+				logLine = ui.HighlightLogLevel(context.LevelDetectPattern.SubexpNames()[1:], matches[1:], logLine)
+			}
 		}
 	}
 	if options.ShowEventTime || options.ShowEventTimestamp {
@@ -124,7 +126,7 @@ var options struct {
 	ShowStreamNames    bool     `arg:"-s,--show-stream-names" help:"Show shortened stream names"`
 	AwsProfile         string   `arg:"-p,--profile" help:"AWS Profile name"`
 	LevelHighlight     bool     `arg:"-w,--level-highlight" help:"Enable highlighting for log events of WARN and ERROR levels"`
-	LevelPattern       string   `arg:"-l,--level-pattern" help:"Regex to extract log level from the log event" default:"(?i)\\s+(warn|warning|error|info)\\s+"`
+	LevelPattern       string   `arg:"-l,--level-pattern" help:"Regex to extract log level from the log event" default:"(?i)\\b((?P<warning>warn|warning)|(?P<error>error))\\b"`
 	DebugLogs          bool     `arg:"--debug-logs" help:"Enable debug logging to debug.log file"`
 	FilterPattern      string   `arg:"-f,--filter" help:"Display only lines that match provided regular expression"`
 	ShowEventTime      bool     `arg:"-t,--show-event-time" help:"Displays Cloudwatch event time in ISO8601 format. This displays only the time portion of timestamp"`

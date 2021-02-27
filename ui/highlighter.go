@@ -13,11 +13,12 @@ var (
 		"blue",
 		"magenta",
 		"cyan",
+		"red",
 	}
 
-	errorBack = ColorFunc(":red")
+	errorBack = ColorFunc(":#FFD0D0")
 
-	warnBack = ColorFunc(":yellow")
+	warnBack = ColorFunc(":#FFFFD0")
 
 	reset = ColorCode("reset")
 
@@ -40,13 +41,16 @@ func createColorFuncs() []ColorizerFunc {
 // HighlightLogLevel applies loglevel-specific background color to the provided text
 // Warning background is applied if logLevel is equal to "WARN" or "WARNING" and
 // Error backgroud is applied for "ERROR" logLevel
-func HighlightLogLevel(logLevel string, text string) string {
-	switch strings.Trim(strings.ToLower(logLevel), " ") {
-	case "warn":
-	case "warning":
-		return warnBack(text)
-	case "error":
-		return errorBack(text)
+func HighlightLogLevel(detectedLevels []string, matches []string, text string) string {
+	for i, level := range detectedLevels {
+		if matches[i] != "" {
+			switch level {
+			case "error":
+				return errorBack(text)
+			case "warning":
+				return warnBack(text)
+			}
+		}
 	}
 	return text
 }
