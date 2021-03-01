@@ -14,10 +14,10 @@ func TestHighlightSelection(t *testing.T) {
 }
 
 func TestStandardHighlightSelection(t *testing.T) {
-	actual := ColorizeStandard("10:12 INFO test test test 1")
-	expected := "\033[32m10:12\033[39m \033[33mINFO\033[39m test test test \033[34m1\033[39m"
+	actual := ColorizeStandard("10:12 INFO test test test 1 ")
+	expected := "\033[32m10:12\033[39m \033[33mINFO\033[39m test test test\033[34m 1 \033[39m"
 
 	if actual != expected {
-		t.Errorf("\nExpected: %v\n  Actual: %v", expected, actual)
+		t.Errorf("\nExpected: '%v'\n  Actual: '%v'", expected, actual)
 	}
 }
