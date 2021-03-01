@@ -29,6 +29,8 @@ var (
 	TimestampColorizer = ColorWrapFunc("+i")
 
 	colorFuncs = createColorFuncs()
+
+	standartColorsRegex = regexp.MustCompile(`(?i)(?:\b(\d[\d:.T-]+)\b)|(?:\[(.*)\])|(?:\s+(\d+)\s+)|(?:\b(info|error|warn)\b)`)
 )
 
 func createColorFuncs() []ColorizerFunc {
@@ -92,4 +94,28 @@ func HighlightSelection(text string, selection []int, style string) string {
 	buf.WriteString(text[selection[1]:])
 	s := buf.String()
 	return s
+}
+
+func ColorizeStandard(text string) string {
+	grpIndices := standartColorsRegex.FindAllStringSubmatchIndex(text, -1)
+	if grpIndices == nil {
+		return text
+	}
+	var sb strings.Builder
+	colorIndex := 0
+	pos := 0
+	for _, group := range grpIndices {
+		beforeGroup := text[pos:group[0]]
+		pos = group[1]
+		sb.WriteString(beforeGroup)
+		sb.WriteString(colorFuncs[colorIndex](text[group[0]:group[1]]))
+		colorIndex++
+		if colorIndex >= len(colorFuncs) {
+			colorIndex = 0
+		}
+	}
+	lastGroup := text[pos:]
+	sb.WriteString(lastGroup)
+
+	return sb.String()
 }

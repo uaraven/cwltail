@@ -46,8 +46,12 @@ func createLogLine(context *logCollectionContext, event cwlogs.CWLEvent) *string
 	} else {
 		logLine = event.Message()
 	}
-	if context.HighlightPattern != nil {
-		logLine = ui.Colorize(context.HighlightPattern, logLine)
+	if !options.NoHighlighting {
+		if context.HighlightPattern != nil {
+			logLine = ui.Colorize(context.HighlightPattern, logLine)
+		} else {
+			logLine = ui.ColorizeStandard(logLine)
+		}
 	}
 	if options.LevelHighlight {
 		if context.LevelDetectPattern != nil {
@@ -89,11 +93,13 @@ func logTailStream(client *cloudwatchlogs.Client, logGroups []string) {
 	cwlogs.Log(client, logstream, logGroups, &start, nil)
 
 	logCollectorContext := logCollectionContext{
-		LogGroup:         logGroups[0],
-		HighlightPattern: regexp.MustCompile(options.ColorPattern),
-		StartTime:        start,
-		EndTime:          nil,
-		Events:           logstream,
+		LogGroup:  logGroups[0],
+		StartTime: start,
+		EndTime:   nil,
+		Events:    logstream,
+	}
+	if options.ColorPattern != "" {
+		logCollectorContext.HighlightPattern = regexp.MustCompile(options.ColorPattern)
 	}
 
 	if options.LevelPattern != "" {
@@ -126,11 +132,12 @@ var options struct {
 	ShowStreamNames    bool     `arg:"-s,--show-stream-names" help:"Show shortened stream names"`
 	AwsProfile         string   `arg:"-p,--profile" help:"AWS Profile name"`
 	LevelHighlight     bool     `arg:"-w,--level-highlight" help:"Enable highlighting for log events of WARN and ERROR levels"`
-	LevelPattern       string   `arg:"-l,--level-pattern" help:"Regex to extract log level from the log event" default:"(?i)\\b((?P<warning>warn|warning)|(?P<error>error))\\b"`
+	LevelPattern       string   `arg:"-l,--level-pattern" help:"Regex to extract log level from the log event" default:"(?i)\\b(?:(?P<warning>warn|warning)|(?P<error>error))\\b"`
 	DebugLogs          bool     `arg:"--debug-logs" help:"Enable debug logging to debug.log file"`
 	FilterPattern      string   `arg:"-f,--filter" help:"Display only lines that match provided regular expression"`
 	ShowEventTime      bool     `arg:"-t,--show-event-time" help:"Displays Cloudwatch event time in ISO8601 format. This displays only the time portion of timestamp"`
 	ShowEventTimestamp bool     `arg:"-i,--show-event-timestamp" help:"Displays Cloudwatch event timestamp in ISO8601 format"`
+	NoHighlighting     bool     `arg:"--no-highlighting" help:"Disables color highlighing of parts of the log message"`
 	LogGroups          []string `arg:"positional,required"`
 }
 

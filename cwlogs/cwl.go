@@ -96,7 +96,7 @@ func (c cwlEventImpl) Timestamp() time.Time {
 }
 
 func (c cwlEventImpl) Message() string {
-	return strings.Trim(c.message, " \n\r\t")
+	return strings.TrimRight(c.message, "\n\r")
 }
 
 func (c cwlEventImpl) LogGroup() string {
@@ -240,6 +240,8 @@ func (ctx *LogStreamingContext) streamRenewal(t *time.Ticker, logGroups []string
 	}
 }
 
+// Log starts reading events from the client and posting them to eventChannel
+// Currently only the first log group from logGroups is used
 func Log(client *cloudwatchlogs.Client, eventChannel chan CWLEvent, logGroups []string, startTime *time.Time, endTime *time.Time) {
 	ctx := LogStreamingContext{
 		Client:       client,
