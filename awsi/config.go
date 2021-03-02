@@ -2,6 +2,7 @@ package awsi
 
 import (
 	"context"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -12,7 +13,7 @@ import (
 )
 
 // ConfigAWS creates AWS config. If profile is provided it is used as a aws profile name
-func ConfigAWS(profile string) *aws.Config {
+func ConfigAWS(profile string, sessionDuration time.Duration) *aws.Config {
 	var cfg aws.Config
 	var err error
 	if profile != "" {
@@ -20,6 +21,7 @@ func ConfigAWS(profile string) *aws.Config {
 			config.WithSharedConfigProfile(profile),
 			config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
 				o.TokenProvider = stscreds.StdinTokenProvider
+				o.Duration = sessionDuration
 			}))
 	} else {
 		cfg, err = config.LoadDefaultConfig(context.TODO())

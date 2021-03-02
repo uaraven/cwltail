@@ -131,6 +131,7 @@ var options struct {
 	ColorPattern       string   `arg:"-c,--color-pattern" help:"Regex to colorize log lines"`
 	ShowStreamNames    bool     `arg:"-s,--show-stream-names" help:"Show shortened stream names"`
 	AwsProfile         string   `arg:"-p,--profile" help:"AWS Profile name"`
+	AwsDuration        string   `arg:"--duration" help:"AWS Session duration" default:"1h"`
 	LevelHighlight     bool     `arg:"-w,--level-highlight" help:"Enable highlighting for log events of WARN and ERROR levels"`
 	LevelPattern       string   `arg:"-l,--level-pattern" help:"Regex to extract log level from the log event" default:"(?i)\\b(?:(?P<warning>warn|warning)|(?P<error>error))\\b"`
 	DebugLogs          bool     `arg:"--debug-logs" help:"Enable debug logging to debug.log file"`
@@ -158,7 +159,12 @@ func main() {
 		log.SetLevel(log.WarnLevel)
 	}
 
-	client := awsi.CreateCloudwatchLogsClient(awsi.ConfigAWS(options.AwsProfile))
+	duration, err := time.ParseDuration(options.AwsDuration)
+	if err != nil {
+		fmt.Printf("Failed to parse duration: %v", err)
+	}
+
+	client := awsi.CreateCloudwatchLogsClient(awsi.ConfigAWS(options.AwsProfile, duration))
 
 	logTailStream(client, options.LogGroups)
 }
