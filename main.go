@@ -50,7 +50,7 @@ func createLogLine(context *logCollectionContext, event cwlogs.CWLEvent) *string
 		if context.HighlightPattern != nil {
 			logLine = ui.Colorize(context.HighlightPattern, logLine)
 		} else {
-			logLine = ui.ColorizeStandard(logLine)
+			logLine = ui.ColorizeByColorName(logLine)
 		}
 	}
 	if options.LevelHighlight {
@@ -138,7 +138,7 @@ var options struct {
 	FilterPattern      string   `arg:"-f,--filter" help:"Display only lines that match provided regular expression"`
 	ShowEventTime      bool     `arg:"-t,--show-event-time" help:"Displays Cloudwatch event time in ISO8601 format. This displays only the time portion of timestamp"`
 	ShowEventTimestamp bool     `arg:"-i,--show-event-timestamp" help:"Displays Cloudwatch event timestamp in ISO8601 format"`
-	NoHighlighting     bool     `arg:"--no-highlighting" help:"Disables color highlighing of parts of the log message"`
+	NoHighlighting     bool     `arg:"--no-highlighting" help:"Disables color highlighting of parts of the log message"`
 	LogGroups          []string `arg:"positional,required"`
 }
 

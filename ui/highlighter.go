@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bytes"
+	"github.com/dlclark/regexp2"
 	"regexp"
 	"strings"
 )
@@ -21,8 +22,6 @@ var (
 
 	warnBack = ColorWrapFunc(":yellow")
 
-	reset = ColorCode("reset")
-
 	//StreamNameColorizer is a colorizer function for log stream name
 	StreamNameColorizer = ColorWrapFunc("+b")
 	//TimestampColorizer is a colorizer function for log event timestamp
@@ -30,7 +29,7 @@ var (
 
 	colorFuncs = createColorFuncs()
 
-	standartColorsRegex = regexp.MustCompile(`(?i)(?:\b(\d[\d:.T-]+)\b)|(?:\[(.*)\])|(?:\s+(\d+)\s+)|(?:\b(info|error|warn)\b)`)
+	standardColorsRe = regexp2.MustCompile(`(?:\b(?<darkgoldenrod>\d[\d:.,ZT+-]+)\b)|(?:\[(?<darkcyan>[^]]+)])|(?:\s+(?<springgreen>\d+)\s+)|(?:\b(?<yellow>info|error|warn)\b)`, regexp2.IgnoreCase)
 )
 
 func createColorFuncs() []ColorizerFunc {
@@ -43,7 +42,7 @@ func createColorFuncs() []ColorizerFunc {
 
 // HighlightLogLevel applies loglevel-specific background color to the provided text
 // Warning background is applied if logLevel is equal to "WARN" or "WARNING" and
-// Error backgroud is applied for "ERROR" logLevel
+// Error background is applied for "ERROR" logLevel
 func HighlightLogLevel(detectedLevels []string, matches []string, text string) string {
 	for i, level := range detectedLevels {
 		if matches[i] != "" {
@@ -58,7 +57,7 @@ func HighlightLogLevel(detectedLevels []string, matches []string, text string) s
 	return text
 }
 
-// Colorize adds cview color tags to each regex groups if the pattern matches
+// Colorize adds ansi color tags to each regex groups if the pattern matches
 func Colorize(pattern *regexp.Regexp, text string) string {
 	grpIndices := pattern.FindStringSubmatchIndex(text)
 	if grpIndices == nil {
@@ -96,22 +95,37 @@ func HighlightSelection(text string, selection []int, style string) string {
 	return s
 }
 
-func ColorizeStandard(text string) string {
-	grpIndices := standartColorsRegex.FindAllStringSubmatchIndex(text, -1)
-	if grpIndices == nil {
-		return text
+func ColorizeByColorName(text string) string {
+	matcher, err := standardColorsRe.FindStringMatch(text)
+	if err != nil {
+		panic(err)
 	}
-	var sb strings.Builder
-	colorIndex := 0
 	pos := 0
-	for _, group := range grpIndices {
-		beforeGroup := text[pos:group[0]]
-		pos = group[1]
-		sb.WriteString(beforeGroup)
-		sb.WriteString(colorFuncs[colorIndex](text[group[0]:group[1]]))
-		colorIndex++
-		if colorIndex >= len(colorFuncs) {
-			colorIndex = 0
+	var sb strings.Builder
+
+	for matcher != nil && len(matcher.Groups()) > 1 {
+		for _, group := range matcher.Groups()[1:] {
+			if len(group.Captures) > 0 {
+				capt := group.Capture
+				beforeGroup := text[pos:capt.Index]
+				pos = capt.Index + capt.Length
+				sb.WriteString(beforeGroup)
+
+				colorName := group.Name
+				colorId := -1
+				if colorName != "" {
+					colorId = NameToAnsi256(colorName)
+				}
+				if colorId >= 0 {
+					sb.WriteString(Color256Wrap(capt.String(), colorName))
+				} else {
+					sb.WriteString(capt.String())
+				}
+			}
+		}
+		matcher, err = standardColorsRe.FindNextMatch(matcher)
+		if err != nil {
+			panic(err)
 		}
 	}
 	lastGroup := text[pos:]

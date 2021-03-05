@@ -61,3 +61,19 @@ func TestWrapColorizer(t *testing.T) {
 		t.Errorf("\nExpected: %v\n  Actual: %v", actual, expected)
 	}
 }
+
+func TestNameToAnsi256(t *testing.T) {
+	color := NameToAnsi256("Goldenrod")
+	if color != 179 {
+		t.Errorf("Invalid color index returned, expected 179, got %d", color)
+	}
+}
+
+func TestColorize256(t *testing.T) {
+	colorizer := ColorWrapFunc("RosyBrown:DodgerBlue")
+	actual := colorizer("Test")
+	expected := "\033[38;5;138;48;5;33mTest\033[39;49m"
+	if actual != expected {
+		t.Errorf("\nExpected: %v\n  Actual: %v", expected, actual)
+	}
+}
