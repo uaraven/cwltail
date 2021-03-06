@@ -29,7 +29,13 @@ var (
 
 	colorFuncs = createColorFuncs()
 
-	standardColorsRe = regexp2.MustCompile(`(?:\b(?<darkgoldenrod>\d[\d:.,ZT+-]+)\b)|(?:\[(?<darkcyan>[^]]+)])|(?:\s+(?<springgreen>\d+)\s+)|(?:\b(?<yellow>info|error|warn)\b)`, regexp2.IgnoreCase)
+	standardColorsRe = regexp2.MustCompile(`(?<darkgoldenrod>\d{2}(?:[-:.]\d{2,3}){1,3})|`+
+		`(?:\[(?<darkcyan>[^]]+)])|`+
+		`(?:\s+(?<RoyalBlue>(?:"[^"]+")|(?:'[^']+'))\s+)|`+
+		`(?:\b(?<plum>info|error|warn|trace|debug|warning)\b)|`+
+		`(?:\b(?<bisque>\d[\d.]+)\b)|`+
+		`(?:(?<turquoise>[\p{L}\d._]+)(?:=|:)(?<lightseagreen>['"]?[\p{L}\d._]+)['"]?)`, // key/value
+		regexp2.IgnoreCase)
 )
 
 func createColorFuncs() []ColorizerFunc {
